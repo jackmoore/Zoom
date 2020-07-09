@@ -13,7 +13,8 @@
 		touch: true, // enables a touch fallback
 		onZoomIn: false,
 		onZoomOut: false,
-		magnify: 1
+		magnify: 1,
+		keyboardControls: false //enables keyboard arrow key controls for accessibility when set to true
 	};
 
 	// Core Zoom Logic, independent of event listeners.
@@ -120,7 +121,10 @@
 				function start(e) {
 					zoom.init();
 					zoom.move(e);
-
+					//Initialize keyboard events only when zoom is active
+					if(settings.keyboardControls) {
+						initKeyboardEvents();
+					}
 					// Skip the fade-in for IE8 and lower since it chokes on fading-in
 					// and changing position based on mousemovement at the same time.
 					$img.stop()
@@ -128,6 +132,10 @@
 				}
 
 				function stop() {
+					//Destroy keyboard events when zoom is inactive
+					if(settings.keyboardControls) {
+						$(document).off('keydown');
+					}
 					$img.stop()
 					.fadeTo(settings.duration, 0, $.isFunction(settings.onZoomOut) ? settings.onZoomOut.call(img) : false);
 				}
@@ -219,6 +227,42 @@
 								stop();
 							}
 						});
+				}
+
+				//Start and stop the zoom when the $source element is focused with Tabs
+				$source.on('focus', function (e) {
+					start(e);
+				});
+
+				$source.on('blur', function (e) {
+					stop();
+				});
+
+        			// Keyboard arrow key events
+				function initKeyboardEvents(){
+					$(document).on('keydown', function(e) {
+						var moveThresohld = $img.width()/10; //Setting the threshold of movement to one tenth the image width as a standard
+						switch (e.which) {
+							case 37: //Keycode of left arrow key
+							$img.css('left', Math.min($img[0].offsetLeft+moveThresohld, 0)); //Moves the image to left and limits it not to exceed the image width
+							break;
+
+							case 38: //Keycode of top arrow key
+							$img.css('top', Math.min($img[0].offsetTop+moveThresohld, 0));
+							break;
+
+							case 39: //Keycode of right arrow key
+							$img.css('left', Math.max($img[0].offsetLeft-moveThresohld, $source.width() - $img.width()));
+							break;
+
+							case 40: //Keycode of bottom arrow key
+							$img.css('top', Math.max($img[0].offsetTop-moveThresohld, $source.height() - $img.height()));
+							break;
+
+							default: return;
+						}
+					e.preventDefault();
+					});
 				}
 				
 				if ($.isFunction(settings.callback)) {
